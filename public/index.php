@@ -102,17 +102,21 @@ if ($method == 'POST') {
 // Logika untuk MEMPERBARUI PRODUK (PUT)
 // ===================================
 if ($method === 'PUT') {
+    // parsing data from input and put into $_PUT array
     parse_str(file_get_contents("php://input"), $_PUT);
 
+    // get id product from query string
     $product_id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
+    // get data from request body(already pars into $_PUT)
     $data = $_PUT;
 
+    // validate data
     if (!$product_id) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "ID product yang akan diupdate harus disediakan"
+            "message" => "ID product yang mau diupdate harus disediakan."
         ]);
         $conn->close();
         exit();
@@ -122,51 +126,56 @@ if ($method === 'PUT') {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Minimal satu field (name, price, atau stock) harus disediakan untuk update."
+            "message" => "Minimal satu field (name, price, stock) harus disediakan untuk update."
         ]);
         $conn->close();
         exit();
     }
 
+    // build dynamis update query
     $sets = [];
     $params = [];
-    $types = '';
-
-    if (isset($data['name'])) {
+    $types = "";
+    
+    if (isset($data['name'])){
         $sets[] = "name = ?";
         $params[] = $data['name'];
         $types .= 's';
     }
-
-    if (isset($data['price'])) {
+    
+    if (isset($data['price'])){
         $sets[] = "price = ?";
         $params[] = $data['price'];
         $types .= 'd';
     }
-
-    if (isset($data['stock'])) {
+    
+    if (isset($data['stock'])){
         $sets[] = "stock = ?";
-        $params[] = (int)$data['stock'];
+        $params[] = $data['stock'];
         $types .= 'i';
     }
 
+    // add product id to last parameter and types 
     $params[] = $product_id;
     $types .= 'i';
 
-    $sql = "UPDATE products SET " . implode(', ', $sets) . " WHERE id = ?";
+    $sql = "UPDATE products SET " . implode(", ", $sets) . " WHERE id = ?";
 
+    // prepare statement
     $stmt = $conn->prepare($sql);
 
+    // error handling for prepare statement
     if ($stmt === false) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Gagal menyiapkan query update: " . $conn-> error
+            "message" => "Gagal menyiapkan query update: " . $conn->error
         ]);
         $conn->close();
         exit();
     }
 
+    // bind parameters dynamically
     $bind_names = [$types];
     for ($i = 0; $i < count($params); $i++) {
         $bind_names[] = &$params[$i];
@@ -174,24 +183,29 @@ if ($method === 'PUT') {
 
     call_user_func_array([$stmt, 'bind_param'], $bind_names);
 
+    // execute statement
     if ($stmt->execute()) {
         if ($stmt->affected_rows > 0) {
             echo json_encode([
                 "status" => "success",
-                "message" => "Produk ID $product_id berhasil diperbarui."
+                "message" => "Produk ID $product_id berhasil diupdate."
             ]);
         } else {
             http_response_code(404);
             echo json_encode([
                 "status" => "error",
-                "message" => "product ID $product_id tidak ditemukan atau tidak ada perubahan data"
+                "message" => "Produk ID $product_id tidak ditemukan atau tidak ada perubahan data."
             ]);
         }
-
     } else {
         http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "Gagal mengeksekusi update: " . $stmt->error]);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Gagal mengeksekusi update: " . $stmt->error
+        ]);
     }
+
+    // close statement
     $stmt->close();
 }
 
