@@ -11,14 +11,12 @@ $route = isset($_GET['route']) ? $_GET['route'] : 'products';
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($route === 'sales' && $method === 'POST') {
+    
     $data = json_decode(file_get_contents('php://input'), true);
 
     if (!isset($data['payment_method']) || !isset($data['items']) || !is_array($data['items']) || empty($data['items'])) {
         http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Data transaksi tidak lengkap atau item kosong."
-        ]);
+        echo json_encode(["status" => "error", "message" => "Data transaksi tidak lengkap atau item kosong."]);
         $conn->close();
         exit();
     }
@@ -39,7 +37,7 @@ if ($route === 'sales' && $method === 'POST') {
         $stmt_sale = $conn->prepare($sql_sale);
         if ($stmt_sale === false) throw new Exception("Prepare statement sales gagal: " . $conn->error);
 
-        $stmt->bind_param('ds', $total_amount, $payment_method);
+        $stmt_sale->bind_param('ds', $total_amount, $payment_method);
 
         $stmt_sale->execute();
         $sale_id = $conn->insert_id;
