@@ -116,7 +116,7 @@ if ($method === 'PUT') {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "ID product yang mau diupdate harus disediakan."
+            "message" => "ID produk yang akan diupdate harus disediakan."
         ]);
         $conn->close();
         exit();
@@ -126,7 +126,7 @@ if ($method === 'PUT') {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Minimal satu field (name, price, stock) harus disediakan untuk update."
+            "message" => "minimal satu field (name, price, stock) harus disertakan untuk update."
         ]);
         $conn->close();
         exit();
@@ -135,33 +135,33 @@ if ($method === 'PUT') {
     // build dynamis update query
     $sets = [];
     $params = [];
-    $types = "";
-    
-    if (isset($data['name'])){
+    $types = '';
+
+    if (isset($data['name'])) {
         $sets[] = "name = ?";
         $params[] = $data['name'];
         $types .= 's';
     }
-    
-    if (isset($data['price'])){
+
+    if (isset($data['price'])) {
         $sets[] = "price = ?";
-        $params[] = $data['price'];
+        $params[] = $ata['price'];
         $types .= 'd';
     }
-    
-    if (isset($data['stock'])){
+
+    if (isset($data['stock'])) {
         $sets[] = "stock = ?";
-        $params[] = $data['stock'];
+        $params[] = (int)$data['stock'];
         $types .= 'i';
     }
 
-    // add product id to last parameter and types 
+    // add product id to last parameter and types for where clause
     $params[] = $product_id;
     $types .= 'i';
 
-    $sql = "UPDATE products SET " . implode(", ", $sets) . " WHERE id = ?";
-
     // prepare statement
+    $sql = "UPDATE products SET " . implode(', ', $sets) . " WHERE id = ?";
+
     $stmt = $conn->prepare($sql);
 
     // error handling for prepare statement
@@ -177,7 +177,8 @@ if ($method === 'PUT') {
 
     // bind parameters dynamically
     $bind_names = [$types];
-    for ($i = 0; $i < count($params); $i++) {
+
+    for($i = 0; $i < count($params); $i++) {
         $bind_names[] = &$params[$i];
     }
 
@@ -188,7 +189,7 @@ if ($method === 'PUT') {
         if ($stmt->affected_rows > 0) {
             echo json_encode([
                 "status" => "success",
-                "message" => "Produk ID $product_id berhasil diupdate."
+                "message" => "Produk ID $product_id berhasil diperbarui."
             ]);
         } else {
             http_response_code(404);
@@ -201,11 +202,64 @@ if ($method === 'PUT') {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Gagal mengeksekusi update: " . $stmt->error
+            "message" => "Gagal eksekusi query update: " . $stmt->error
         ]);
     }
 
     // close statement
+    $stmt->close();
+}
+
+if ($method === 'DELETE') {
+    $product_id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+
+    if (!$product_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "ID produk yang ingin dihapus harus disertakan."
+        ]);
+        $conn->close();
+        exit();
+    }
+
+    $sql = "DELETE FROM products WHERE id = ?";
+
+    $stmt = $conn->prepare($sql);
+
+    if ($stmt === false) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Gagal menyiapakan query delete: " . $conn->error
+        ]);
+        $conn->close();
+        exit();
+    }
+
+    $stmt->bind_param("i", $product_id);
+
+    if ($stmt->execute()) {
+        if ($stmt->affected_rows > 0) {
+            echo json_encode([
+                "status" => "success",
+                "message" => "Product ID $product_id berhasil dihapus."
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Product ID $product_id tidak dutemukan atau tidak ada data yang dihapus."
+            ]);
+        }
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Gagal eksekusi delete: " . $stmt->error
+        ]);
+    }
+
     $stmt->close();
 }
 
