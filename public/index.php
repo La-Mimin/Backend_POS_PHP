@@ -10,7 +10,11 @@ require_once 'controllers/SaleController.php';
 // Define the route
 $method = $_SERVER['REQUEST_METHOD'];
 
-$route = isset($_GET['route']) ? strtolower($_GET['route']) : 'products';
+$uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+
+$uri_segments = explode('/', $uri);
+
+$route = isset($uri_segments[0]) && $uri_segments[0] !== '' ? strtolower($uri_segments[0]) : 'products';
 
 $response = [];
 
