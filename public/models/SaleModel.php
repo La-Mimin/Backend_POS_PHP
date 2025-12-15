@@ -58,5 +58,50 @@ class SaleModel {
             throw new Exception("Transaksi dibatalkan. Detail: " . $e->getMessage());
         }
     }
+
+    public function getSaleDetails($id) {
+        $sale_id = (int)$id;
+
+        $sql_header = "SELECT id, total_amount, payment_method, sales_date FROM sales WHERE id = ?";
+        $stmt_header = $this->conn->prepare($sql_header);
+        if ($stmt_header === false) {
+            throw new Exception("Prepare header GAGAL: " . $this->conn->error);
+        }
+
+        $stmt_header->bind_param("i", $sale_id);
+        $stmt_header->execute();
+        $result_header = $stmt_header->get_result();
+        $header = $result_header->fetch_assoc();
+        $stmt_header->close();
+
+        if (!$header) {
+            return null;
+        }
+
+        $sql_items = "SELECT si.product_id, si.quantity, si.price_at_sale, p.name AS product_name FROM sale_items si join products p ON si.product_id = p.id WHERE si.sale_id = ?";
+
+        $stmt_items = $this->conn->prepare($sql_items);
+        if ($stmt_items === false) {
+            throw new Exception("Prepare items GAGAL: " . $this->conn->error);
+        }
+        
+        $stmt_items->bind_param("i", $sale_id);
+        $stmt_items->execute();
+        $result_items = $stmt_items->get_result();
+        $items = [];
+        while($row = $result_items->fetch_assoc()) {
+            $items[] = $row;
+        }
+        $stmt_items->close();
+
+        if (!$header) {
+            return null;
+        }
+
+        //die("Debug 1: Header OK. ID: " . $header['id']);
+        $header['items'] = $items;
+
+        return $header;
+    }
 }
 ?>

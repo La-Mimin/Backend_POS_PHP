@@ -10,9 +10,15 @@ require_once 'controllers/SaleController.php';
 // Define the route
 $method = $_SERVER['REQUEST_METHOD'];
 
-$uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+// KOREKSI UTAMA PADA PARSING URI
+// ----------------------------------------------------
+$uri_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+// Pastikan kita bekerja dengan path yang telah dibersihkan, bukan variabel yang tidak ada.
+$clean_path = trim($uri_path, '/');
 
-$uri_segments = explode('/', $uri);
+// Menggunakan $clean_path, bukan $uri yang tidak terdefinisi.
+$uri_segments = array_values(array_filter(explode('/', $clean_path)));
+// ----------------------------------------------------
 
 $route = isset($uri_segments[0]) && $uri_segments[0] !== '' ? strtolower($uri_segments[0]) : 'products';
 
@@ -28,18 +34,31 @@ if ($route === 'products') {
         $response = $controller->handleGetRequest();
     } elseif ($method === 'POST') {
         $response = $controller->handlePostRequest();
-    } elseif ($method === 'PUT') { // BARU
+    } elseif ($method === 'PUT') { 
         $response = $controller->handlePutRequest();
-    } elseif ($method === 'DELETE') { // BARU
+    } elseif ($method === 'DELETE') { 
         $response = $controller->handleDeleteRequest();
     }
 
 } elseif ($route === 'sales') {
     $controller = new SaleController($conn);
+    
+    // KOREKSI TYPO: Menggunakan satu underscore (sale_id)
+    $sale_id = isset($uri_segments[1]) ? $uri_segments[1] : null;
 
     if ($method === 'POST') {
         $response = $controller->handlePostRequest();
+    } elseif ($method === 'GET') {
+        if ($sale_id) {
+            // Jika ada ID (GET /sales/1)
+            $response = $controller->handleGetDetailRequest($sale_id);
+        } else {
+            // Jika tidak ada ID (GET /sales)
+            http_response_code(404);
+            $response = ["status" => "error", "message" => "Endpoint daftar penjualan (GET /sales) belum diimplementasikan. Coba GET /sales/ID_TRANSAKSI."];
+        }
     }
+
 } else {
     // Route errors handling
     http_response_code(404);

@@ -34,5 +34,33 @@ class SaleController {
             return ["status" => "error", "message" => "Transaksi gagal: " . $e->getMessage()];
         }
     }
+
+    // Menangani GET /sales/{id}
+    public function handleGetDetailRequest($id) {
+        $sale_id = (int)$id;
+
+        if (!$sale_id) {
+            http_response_code(400);
+            return ["status" => "error", "message" => "ID transaksi harus disediakan."];
+        }
+
+        try {
+            $details = $this->saleModel->getSaleDetails($sale_id);
+
+            if ($details) {
+                http_response_code(200);
+                // KOREKSI 1: Hapus "message" yang tidak valid
+                
+                return ["status" => "success", "data" => $details]; 
+            } else {
+                // KOREKSI 2: Gunakan kode 404 yang benar
+                http_response_code(404); 
+                return ["status" => "error", "message" => "Transaksi ID $sale_id tidak ditemukan."];
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ["status" => "error", "message" => "Gagal mengambil detail transaksi: " . $e->getMessage()];
+        }
+    }
 }
 ?>
