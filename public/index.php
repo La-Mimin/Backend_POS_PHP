@@ -54,8 +54,7 @@ if ($route === 'products') {
             $response = $controller->handleGetDetailRequest($sale_id);
         } else {
             // Jika tidak ada ID (GET /sales)
-            http_response_code(404);
-            $response = ["status" => "error", "message" => "Endpoint daftar penjualan (GET /sales) belum diimplementasikan. Coba GET /sales/ID_TRANSAKSI."];
+            $response = $controller->handleGetAllRequest();
         }
     }
 

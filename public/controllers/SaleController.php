@@ -62,5 +62,35 @@ class SaleController {
             return ["status" => "error", "message" => "Gagal mengambil detail transaksi: " . $e->getMessage()];
         }
     }
+
+    public function handleGetAllRequest() {
+        try {
+            $sales = $this->saleModel->getAllSales();
+
+            if ($sales) {
+                http_response_code(200);
+
+                return [
+                    "status" => "success",
+                    "data" => $sales
+                ];
+            } else {
+                http_response_code(200);
+
+                return [
+                    "status" => "success",
+                    "message" => "belum ada data transaksi",
+                    "data" => []
+                ];
+            }
+        } catch (\Exception $e) {
+            http_response_code(500);
+
+            return [
+                "status" => "error",
+                "message" => "Gagal mengambil data transaksi: " . $e->getMessage()
+            ];
+        }
+    }
 }
 ?>

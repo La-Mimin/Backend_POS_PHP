@@ -103,5 +103,21 @@ class SaleModel {
 
         return $header;
     }
+
+    public function getAllSales() {
+        $sql = "SELECT id, total_amount, payment_method, sales_date FROM sales ORDER BY sales_date DESC";
+
+        $result = $this->conn->query($sql);
+
+        $sales = [];
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $sales[] = $row;
+            }
+        }
+
+        return $sales;
+    }
 }
 ?>
