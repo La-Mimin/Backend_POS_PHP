@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 require_once 'config/db.php'; // Ambil koneksi $conn
 require_once 'controllers/ProductController.php';
 require_once 'controllers/SaleController.php';
+require_once 'controllers/UserController.php';
 
 // Define the route
 $method = $_SERVER['REQUEST_METHOD'];
@@ -58,7 +59,19 @@ if ($route === 'products') {
         }
     }
 
-} else {
+} else if ($route === 'login') {
+    $controller = new UserController($conn);
+
+    if ($method === 'POST') {
+        $response = $controller->handleLoginRequest();
+    } else {
+        http_response_code(405);
+        $response = [
+            "status" => "error",
+            "message" => "Hanya metode POST yang diizinkan untuk login."
+        ];
+    }
+}else {
     // Route errors handling
     http_response_code(404);
     $response = ["status" => "error", "message" => "Endpoint tidak ditemukan."];
