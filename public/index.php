@@ -11,8 +11,16 @@ $method = strtoupper(trim($_SERVER['REQUEST_METHOD']));
 
 // 2. Definisikan Route yang dilindungi (HARUS SEBELUM MIDDLEWARE)
 $protected_routes = [
-    'products' => ['POST', 'PUT', 'DELETE'], 
-    'sales'    => ['GET', 'POST'],
+    'products' => [
+        'POST' => ['admin'],
+        'PUT' => ['admin'],
+        'DELETE' => ['admin'],
+        'GET'  => ['admin', 'kasir']
+    ], 
+    'sales'    => [
+        'POST' => ['admin', 'kasir'],
+        'GET' => ['admin']
+    ],
 ];
 
 // 3. Parsing URI untuk mendapatkan $route
@@ -22,30 +30,47 @@ $uri_segments = array_values(array_filter(explode('/', $clean_path)));
 $route = isset($uri_segments[0]) && $uri_segments[0] !== '' ? strtolower($uri_segments[0]) : 'products';
 
 // 4. --- MIDDLEWARE OTENTIKASI JWT ---
-if (isset($protected_routes[$route]) && in_array($method, $protected_routes[$route])) {
-    $headers = apache_request_headers();
-    // Perbaikan typo $isset menjadi isset
-    $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+if (isset($protected_routes[$route])) {
+    
+    if (isset($protected_routes[$route][$method])) {
+        $headers = apache_request_headers();
+        $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
 
-    $token = null;
-    if (preg_match('/Bearer\s(\S+)/', $auth_header, $matches)) {
-        $token = $matches[1];
+        $token = null;
+        if (preg_match('/Bearer\s(\S+)/', $auth_header, $matches)) {
+            $token = $matches[1];
+        }
+
+        $user_controller = new UserController($conn);
+        $user_data = $user_controller->verifyJWT($token);
+
+        if (!$user_data) {
+            http_response_code(401);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Akses ditolak: Token tidak valid atau hilang."
+            ]);
+            $conn->close();
+            exit; // Menghentikan aplikasi di sini jika gagal
+        }
+
+        $allowed_roles = $protected_routes[$route][$method];
+        $user_role = $user_data['role'];
+
+        if (!in_array($user_role, $allowed_roles)) {
+            http_response_code(403);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Akses ditolak. Peran ($user_role) tidak memiliki izin untuk akses ini."
+            ]);
+
+            $conn->close();
+            exit;
+        }
+
+        $GLOBALS['user_data'] = $user_data;
     }
-
-    $user_controller = new UserController($conn);
-    $user_data = $user_controller->verifyJWT($token);
-
-    if (!$user_data) {
-        http_response_code(401);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Akses ditolak: Token tidak valid atau hilang."
-        ]);
-        $conn->close();
-        exit; // Menghentikan aplikasi di sini jika gagal
-    }
-
-    $GLOBALS['user_data'] = $user_data;
+    
 }
 
 $response = [];
