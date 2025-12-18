@@ -119,5 +119,26 @@ class SaleModel {
 
         return $sales;
     }
+
+    public function getSalesByDateRange($startDate = null, $endDate = null) {
+        $sql = "SELECT id, total_amount, payment_method, sales_date 
+            FROM sales 
+            WHERE DATE(sales_date) BETWEEN ? AND ? 
+            ORDER BY sales_date DESC";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $sales = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $sales[] = $row;
+        }
+
+        $stmt->close();
+        return $sales;
+    }
 }
 ?>

@@ -64,14 +64,26 @@ class SaleController {
     }
 
     public function handleGetAllRequest() {
+
+        $startDate = $_GET['start_date'] ?? null;
+        $endDate = $_GET['end_date'] ?? null;
+
         try {
-            $sales = $this->saleModel->getAllSales();
+            if ($startDate && $endDate) {
+                $sales = $this->saleModel->getSalesByDateRange($startDate, $endDate);
+                $message = "Menampilkan laporan dari $startDate sampai $endDate.";
+            } else {
+                $sales = $this->saleModel->getAllSales();
+                $message = "Menampilkan semua data penjualan.";
+            }
 
             if ($sales) {
                 http_response_code(200);
 
                 return [
                     "status" => "success",
+                    "message" => $message,
+                    "count" => count($sales),
                     "data" => $sales
                 ];
             } else {
@@ -83,7 +95,7 @@ class SaleController {
                     "data" => []
                 ];
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             http_response_code(500);
 
             return [
