@@ -19,7 +19,8 @@ $protected_routes = [
     ], 
     'sales'    => [
         'POST' => ['admin', 'kasir'],
-        'GET' => ['admin']
+        'GET' => ['admin'],
+        'DELETE' => ['admin']
     ],
 ];
 
@@ -91,16 +92,22 @@ if ($route === 'products') {
 
 } elseif ($route === 'sales') {
     $controller = new SaleController($conn);
-    $sale_id = isset($uri_segments[1]) ? $uri_segments[1] : null;
 
-    if ($method === 'POST') {
-        $response = $controller->handlePostRequest();
+    $sub_route = isset($uri_segments[1]) ? $uri_segments[1] : null;
+
+    if ($method === 'DELETE') {
+        $sale_id = isset($uri_segments[1]) ? $uri_segments[1] : null;
+        $response = $controller->handleVoidRequest($sale_id);
     } elseif ($method === 'GET') {
-        if ($sale_id) {
-            $response = $controller->handleGetDetailRequest($sale_id);
+        if ($sub_route === 'summary'){
+            $response = $controller->handleSummaryRequest();
+        } elseif ($sub_route) {
+            $response = $controller->handleGetDetailRequest($sub_route);
         } else {
             $response = $controller->handleGetAllRequest();
         }
+    } elseif ($method === 'POST') {
+        $response = $controller->handlePostRequest();
     }
 
 } elseif ($route === 'login') {

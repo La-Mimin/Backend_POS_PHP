@@ -8,14 +8,52 @@ class SaleModel {
 
     // Fungsi CREATE: Mencatat transaksi penjualan (menggunakan Transaction)
     public function recordSale($payment_method, $items) {
+
+        if (empty($items)) {
+            throw new Exception("Tidak ada item untuk dicatat.");
+        }
         
         $this->conn->begin_transaction(); // Mulai Transaksi
 
         try {
+
+            // products stock check
+            $checkSql = "SELECT stock, name, price FROM products WHERE id = ? FOR UPDATE";
+            $stmtCheck = $this->conn->prepare($checkSql);
+            
             $total_amount = 0;
+            $validated_items = [];
+
             foreach ($items as $item) {
+                $qty = (int)$item['quantity'];
+                if ($qty <= 0) {
+                    throw new Exception("Kuantitas untuk produk ID " . $item['product_id'] . " harus lebih dari 0.");
+                }
+
+                $stmtCheck->bind_param("i", $item['product_id']);
+                $stmtCheck->execute();
+                $result = $stmtCheck->get_result();
+                $product = $result->fetch_assoc();
+
+                if (!$product) {
+                    throw new Exception("Produk ID " . $item['product_id'] . " tidak ditemukan.");
+                }
+
+                if ($product['stock'] < $qty) {
+                    throw new Exception("Stok tidak cukup untuk: " . $product['name'] . " (Sisa: " . $product['stock'] . ")");
+                }
+
+
                 $total_amount += $item['quantity'] * $item['price_at_sale'];
+
+                $validated_items[] = [
+                    'product_id' => $item['product_id'],
+                    'quantity' => $qty,
+                    'price' => $item['price']
+                ];
             }
+            
+            $stmtCheck->close();
 
             // A. INSERT INTO sales (Header)
             $sql_sale = "INSERT INTO sales (total_amount, payment_method) VALUES (?, ?)";
@@ -32,7 +70,7 @@ class SaleModel {
             $sql_stock = "UPDATE products SET stock = stock - ? WHERE id = ?";
             $stmt_stock = $this->conn->prepare($sql_stock);
 
-            foreach ($items as $item) {
+            foreach ($validated_items as $item) {
                 $product_id = (int)$item['product_id'];
                 $quantity = (int)$item['quantity'];
                 $price_at_sale = $item['price_at_sale'];
@@ -139,6 +177,77 @@ class SaleModel {
 
         $stmt->close();
         return $sales;
+    }
+
+    public function getDailySummary() {
+        $summary = [];
+
+        $sql = "SELECT 
+                SUM(total_amount) as total_revenue, 
+                COUNT(id) as total_transactions 
+            FROM sales 
+            WHERE DATE(sales_date) = CURDATE()";
+        
+        $result = $this->conn->query($sql);
+        $data = $result->fetch_assoc();
+
+        $summary['total_revenue'] = $data['total_revenue'] ?? 0;
+        $summary['total_transactions'] = $data['total_transactions'] ?? 0;
+
+        $sqlPay = "SELECT payment_method, COUNT(*) as count 
+               FROM sales 
+               WHERE DATE(sales_date) = CURDATE() 
+               GROUP BY payment_method";
+
+        $resPay = $this->conn->query($sqlPay);
+        $payments = [];
+        while ($row = $resPay->fetch_assoc()) {
+            $payments[$row['payment_method']] = $row['count'];
+        }
+
+        $summary['payment_methods'] = $payments;
+
+        return $summary;
+    }
+
+    public function voidSale($sale_id) {
+        $this->conn->begin_transaction();
+
+        try {
+            $sqlCheck =  "SELECT status FROM sales WHERE id = ? FOR UPDATE";
+            $stmtCheck = $this->conn->prepare($sqlCheck);
+            $stmtCheck->bind_param("i", $sale_id);
+            $stmtCheck->execute();
+            $res = $stmtCheck->get_result()->fetch_assoc();
+
+            if (!$res) throw new Exception("Transaksi tidak ditemukan.");
+            if ($res['status'] === 'voided') throw new Exception("Transaksi ini sudah dibatalkan sebelumnya.");
+
+            $sqlItems = "SELECT product_id, quantity FROM sale_items WHERE sale_id = ?";
+            $stmtItems = $this->conn->prepare($sqlItems);
+            $stmtItems->bind_param("i", $sale_id);
+            $stmtItems->execute();
+            $items = $stmtItems->get_result();
+
+            $sqlUpdateStock = "UPDATE products SET stock = stock + ? WHERE id = ?";
+            $stmtUpdateStock = $this->conn->prepare($sqlUpdateStock);
+
+            while ($row = $items->fetch_assoc()) {
+                $stmtUpdateStock->bind_param("ii", $row['quantity'], $row['product_id']);
+                $stmtUpdateStock->execute();
+            }
+
+            $sqlVoid = "UPDATE sales SET status = 'voided' WHERE id = ?";
+            $stmtVoid = $this->conn->prepare($sqlVoid);
+            $stmtVoid->bind_param("i", $sale_id);
+            $stmtVoid->execute();
+
+            $this->conn->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->conn->rollback();
+            throw $e;
+        }
     }
 }
 ?>

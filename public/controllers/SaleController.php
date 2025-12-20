@@ -104,5 +104,42 @@ class SaleController {
             ];
         }
     }
+
+    public function handleSummaryRequest() {
+        try {
+            $summary = $this->saleModel->getDailySummary();
+
+            return [
+                "status" => "success",
+                "message" => "Ringkasan dashboard berhasil dimuat.",
+                "date" => date('Y-m-d'),
+                "summary" => $summary
+            ];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ["status" => "error", "message" => $e->getMessage()];
+        }
+    }
+
+    public function handleVoidRequest($sale_id) {
+        if(!$sale_id) {
+            http_response_code(400);
+            return [
+                "status" => "error",
+                "message" => "ID Transaksi diperlukan."
+            ];
+        }
+
+        try {
+            $this->saleModel->voidSale($sale_id);
+        return [
+                "status" => "success",
+                "message" => "Transaksi ID $sale_id berhasil dibatalkan dan stok telah dikembalikan."
+            ];
+        } catch (\Throwable $th) {
+            http_response_code(400);
+            return ["status" => "error", "message" => $e->getMessage()];
+        }
+    }
 }
 ?>
