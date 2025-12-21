@@ -141,5 +141,49 @@ class SaleController {
             return ["status" => "error", "message" => $e->getMessage()];
         }
     }
+
+    public function handleReceiptRequest($sale_id) {
+        $data = $this->saleModel->getSaleReceiptData($sale_id);
+        if (!$data) {
+            http_response_code(404);
+            return [
+                "status" => "error",
+                "message" => "Transaksi tidak ditemukan."
+            ];
+        }
+
+        $h = $data['header'];
+        $items = $data['items'];
+        $width = 32;
+
+        $out = str_pad("TOKO KELONTONG MODERN", $width, " ", STR_PAD_BOTH) . "\n";
+        $out .= str_pad("Jl. Digital No. 101", $width, " ", STR_PAD_BOTH) . "\n";
+        $out .= str_repeat("=", $width) . "\n";
+
+        $out .= "ID   : " . $h['id'] . "\n";
+        $out .= "Tgl  : " . $h['sales_date'] . "\n";
+        $out .= "By   : " . ($GLOBALS['user_data']['username'] ?? 'kasir') . "\n";
+        $out .= str_repeat("-", $width) . "\n";
+
+        foreach ($items as $item) {
+            $out .= substr($item['name'], 0, $width) . "\n";
+            $detail = "  " . $item['qty'] . " x " . number_format($item['price']);
+            $subtotal = number_format($item['subtotal']);
+            $out .= $detail . str_pad($subtotal, $width - strlen($detail), " ", STR_PAD_LEFT) . "\n";
+        }
+
+        $out .= str_repeat("-", $width) . "\n";
+        $totalLabel = "TOTAL: ";
+        $totalVal = "Rp " . number_format($h['total_amount']);
+        $out .= $totalLabel . str_pad($totalVal, $width - strlen($totalLabel), " ", STR_PAD_LEFT) . "\n";
+        $out .= str_repeat("-", $width) . "\n";
+        $out .= str_pad("METODE: " . strtoupper($h['payment_method']), $width, " ", STR_PAD_BOTH) . "\n\n";
+        $out .= str_pad("Terima kasih atas", $width, " ", STR_PAD_BOTH) . "\n";
+        $out .= str_pad("kunjungan Anda", $width, " ", STR_PAD_BOTH). "\n";
+
+        header('Content-Type: text/plain');
+        echo $out;
+        exit;
+    }
 }
 ?>

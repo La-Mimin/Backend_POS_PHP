@@ -19,7 +19,7 @@ $protected_routes = [
     ], 
     'sales'    => [
         'POST' => ['admin', 'kasir'],
-        'GET' => ['admin'],
+        'GET' => ['admin', 'kasir'],
         'DELETE' => ['admin']
     ],
 ];
@@ -99,7 +99,10 @@ if ($route === 'products') {
         $sale_id = isset($uri_segments[1]) ? $uri_segments[1] : null;
         $response = $controller->handleVoidRequest($sale_id);
     } elseif ($method === 'GET') {
-        if ($sub_route === 'summary'){
+        if ($sub_route === 'receipt' && isset($uri_segments[2])) {
+            // GET /sales/receipt/12
+            $response = $controller->handleReceiptRequest($uri_segments[2]);
+        } elseif ($sub_route === 'summary'){
             $response = $controller->handleSummaryRequest();
         } elseif ($sub_route) {
             $response = $controller->handleGetDetailRequest($sub_route);

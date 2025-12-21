@@ -249,5 +249,40 @@ class SaleModel {
             throw $e;
         }
     }
+
+    public function getSaleReceiptData($sale_id) {
+        $sql = "SELECT 
+                s.id, s.total_amount, s.payment_method, s.sales_date, si.quantity, si.price_at_sale, p.name as product_name
+                FROM sales s 
+                JOIN sale_items si ON s.id = si.sale_id
+                JOIN products p ON si.product_id = p.id
+                WHERE s.id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $sale_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $items = [];
+        $header = null;
+
+        while ($row = $result->fetch_assoc()) {
+            if (!$header) {
+                $header = [
+                    'id' => $row['id'],
+                    'total_amount' => $row['total_amount'],
+                    'payment_method' => $row['payment_method'],
+                    'sales_date' => $row['sales_date']
+                ];
+            }
+            $items[] = [
+                'name' => $row['product_name'],
+                'qty' => $row['quantity'],
+                'price' => $row['price_at_sale'],
+                'subtotal' => $row['quantity'] * $row['price_at_sale']
+            ];
+        }
+
+        return $header ? ['header' => $header, 'items' => $items] : null;
+    }
 }
 ?>
