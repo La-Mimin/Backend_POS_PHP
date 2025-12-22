@@ -12,7 +12,7 @@ class SaleController {
     public function handlePostRequest() {
         $data = json_decode(file_get_contents('php://input'), true);
 
-        // Validasi
+        // Validation
         if (!isset($data['payment_method']) || !isset($data['items']) || empty($data['items'])) {
             http_response_code(400);
             return ["status" => "error", "message" => "Data transaksi tidak lengkap."];

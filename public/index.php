@@ -5,6 +5,7 @@ require_once 'config/db.php';
 require_once 'controllers/ProductController.php';
 require_once 'controllers/SaleController.php';
 require_once 'controllers/UserController.php';
+require_once 'controllers/PurchaseController.php';
 
 // 1. Definisikan Method
 $method = strtoupper(trim($_SERVER['REQUEST_METHOD']));
@@ -17,10 +18,14 @@ $protected_routes = [
         'DELETE' => ['admin'],
         'GET'  => ['admin', 'kasir']
     ], 
-    'sales'    => [
+    'sales' => [
         'POST' => ['admin', 'kasir'],
         'GET' => ['admin', 'kasir'],
         'DELETE' => ['admin']
+    ],
+    'purchases' => [
+        'POST' => ['admin'],
+        'GET' => ['admin']
     ],
 ];
 
@@ -113,6 +118,15 @@ if ($route === 'products') {
         $response = $controller->handlePostRequest();
     }
 
+} elseif ($route === 'purchases') {
+    $controller = new PurchaseController($conn);
+    
+    if ($method === 'POST') {
+        $response = $controller->handlePostRequest();
+    } else {
+        http_response_code(405);
+        $response = ["status" => "error", "message" => "Metode tidak diizinkan."];
+    }
 } elseif ($route === 'login') {
     $controller = new UserController($conn);
     if ($method === 'POST') {
