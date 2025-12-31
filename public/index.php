@@ -1,5 +1,14 @@
 <?php
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *'); // Sesuaikan jika sudah di hosting
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Handle Preflight Request (OPTIONS)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 require_once 'config/db.php';
 require_once 'controllers/ProductController.php';
@@ -39,8 +48,17 @@ $clean_path = trim($uri_path, '/');
 $uri_segments = array_values(array_filter(explode('/', $clean_path)));
 $route = isset($uri_segments[0]) && $uri_segments[0] !== '' ? strtolower($uri_segments[0]) : 'products';
 
-// 4. --- MIDDLEWARE OTENTIKASI JWT ---
-if (isset($protected_routes[$route])) {
+// 4. --- MIDDLEWARE AUTHENTICATION JWT ---
+if (isset($protected_routes[$route][$method])) {
+
+    $headers = apache_request_headers();
+    $auth_header = $headers['Authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    
+    $token = null;
+
+    if (preg_match('/Bearer\s(\S+)/', $auth_header, $matches)) {
+
+    }
     
     if (isset($protected_routes[$route][$method])) {
         $headers = apache_request_headers();
@@ -58,7 +76,7 @@ if (isset($protected_routes[$route])) {
             http_response_code(401);
             echo json_encode([
                 "status" => "error",
-                "message" => "Akses ditolak: Token tidak valid atau hilang."
+                "message" => "Akses ditolak: Token tidak valid atau expired."
             ]);
             $conn->close();
             exit; // Menghentikan aplikasi di sini jika gagal
@@ -86,70 +104,105 @@ if (isset($protected_routes[$route])) {
 $response = [];
 
 // 5. --- ROUTING LOGIC ---
-if ($route === 'products') {
-    $controller = new ProductController($conn);
+switch ($route) {
+    case 'products':
+        $controller = new ProductController($conn);
 
-    if ($method === 'GET') {
-        $response = $controller->handleGetRequest();
-    } elseif ($method === 'POST') {
-        $response = $controller->handlePostRequest();
-    } elseif ($method === 'PUT') { 
-        $response = $controller->handlePutRequest();
-    } elseif ($method === 'DELETE') { 
-        $response = $controller->handleDeleteRequest();
-    }
+        if ($method === 'GET') {
+            $response = $controller->handleGetRequest();
+        } elseif ($method === 'POST') {
+            $response = $controller->handlePostRequest();
+        } elseif ($method === 'PUT') { 
+            $response = $controller->handlePutRequest();
+        } elseif ($method === 'DELETE') { 
+            $response = $controller->handleDeleteRequest();
+        } else {
+            http_response_code(405);
+
+            $response = [
+                "status" => "error",
+                "message" => "Method not allowed"
+            ];
+        }
+        break;
+    
+    case 'sales':
+        $controller = new SaleController($conn);
+
+        $sub_route = $uri_segments[1] ?? null;
+
+        if ($method === 'POST') {
+            $response = $controller->handlePostRequest();
+        } elseif ($method === 'DELETE') {
+            $response = $controller->handleVoidRequest($sub_route);
+        } elseif ($method === 'GET') {
+            if ($sub_route === 'receipt' && isset($uri_segments[2])) {
+                // GET /sales/receipt/12
+                $response = $controller->handleReceiptRequest($uri_segments[2]);
+            } elseif ($sub_route === 'summary'){
+                $response = $controller->handleSummaryRequest();
+            } elseif ($sub_route) {
+                $response = $controller->handleGetDetailRequest($sub_route);
+            } else {
+                $response = $controller->handleGetAllRequest();
+            }
+        } else {
+            http_response_code(405); $response = ["status" => "error", "message" => "Method not allowed"];
+        }
+        break;
+    
+    case 'purchases':
+        $controller = new PurchaseController($conn);
+    
+        if ($method === 'POST') {
+            $response = $controller->handlePostRequest();
+        } elseif ($method === 'GET') {
+            $response = $controller->handleGetAllRequest();
+        } else {
+            http_response_code(405);
+            $response = ["status" => "error", "message" => "Metode tidak diizinkan."];
+        }
+        break;
+    
+    case 'login':
+        if ($method === 'POST') {
+            $controller = new UserController($conn);
+            $response = $controller->handleLoginRequest();
+        } else {
+            http_response_code(405);
+            $response = ["status" => "error", "message" => "Metode tidak diizinkan."];
+        }
+        break;
+    
+    case 'logs':
+        if ($method === 'GET') {
+            $controller = new LogController($conn);
+            $response = $controller->handleGetRequest();
+        } else {
+            http_response_code(405); $response = ["status" => "error", "message" => "Method not allowed"];
+        }
+        break;
+    
+    default:
+        http_response_code(404);
+        $response = ["status" => "error", "message" => "Endpoint tidak ditemukan."];
+        break;
+}
+
+if ($route === 'products') {
+    
 
 } elseif ($route === 'sales') {
-    $controller = new SaleController($conn);
-
-    $sub_route = isset($uri_segments[1]) ? $uri_segments[1] : null;
-
-    if ($method === 'DELETE') {
-        $sale_id = isset($uri_segments[1]) ? $uri_segments[1] : null;
-        $response = $controller->handleVoidRequest($sale_id);
-    } elseif ($method === 'GET') {
-        if ($sub_route === 'receipt' && isset($uri_segments[2])) {
-            // GET /sales/receipt/12
-            $response = $controller->handleReceiptRequest($uri_segments[2]);
-        } elseif ($sub_route === 'summary'){
-            $response = $controller->handleSummaryRequest();
-        } elseif ($sub_route) {
-            $response = $controller->handleGetDetailRequest($sub_route);
-        } else {
-            $response = $controller->handleGetAllRequest();
-        }
-    } elseif ($method === 'POST') {
-        $response = $controller->handlePostRequest();
-    }
+    
 
 } elseif ($route === 'purchases') {
-    $controller = new PurchaseController($conn);
     
-    if ($method === 'POST') {
-        $response = $controller->handlePostRequest();
-    } elseif ($method === 'GET') {
-        $response = $controller->handleGetAllRequest();
-    } else {
-        http_response_code(405);
-        $response = ["status" => "error", "message" => "Metode tidak diizinkan."];
-    }
 } elseif ($route === 'login') {
-    $controller = new UserController($conn);
-    if ($method === 'POST') {
-        $response = $controller->handleLoginRequest();
-    } else {
-        http_response_code(405);
-        $response = ["status" => "error", "message" => "Metode tidak diizinkan."];
-    }
+    
 } elseif($route === 'logs') {
-    $controller = new LogController($conn);
-
-    if ($method === 'GET') {
-        $response = $controller->handleGetRequest();
-    }
+    
 } else {
-    http_response_code(404);
-    $response = ["status" => "error", "message" => "Endpoint tidak ditemukan."];
+    
 }
 
 echo json_encode($response);
