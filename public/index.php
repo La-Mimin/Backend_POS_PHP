@@ -123,6 +123,8 @@ if ($route === 'products') {
     
     if ($method === 'POST') {
         $response = $controller->handlePostRequest();
+    } elseif ($method === 'GET') {
+        $response = $controller->handleGetAllRequest();
     } else {
         http_response_code(405);
         $response = ["status" => "error", "message" => "Metode tidak diizinkan."];

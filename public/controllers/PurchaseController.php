@@ -39,4 +39,44 @@ class PurchaseController {
             ];
         }
     }
+
+    public function handleGetAllRequest() {
+        $startDate = $_GET['start_date'] ?? null;
+        $endDate = $_GET['end_date'] ?? null;
+
+        try {
+            if ($startDate && $endDate) {
+                $purchases = $this->purchaseModel->getPurchasesByDateRange($startDate, $endDate);
+                $message = "Menampilkan laporan pembelian dari $startDate sampai $endDate.";
+            } else {
+                $purchases = $this->purchaseModel->getAllPurchases();
+                $message = "Menampilkan semua data pembelian";
+            }
+
+            if ($purchases) {
+                http_response_code(200);
+                return [
+                    "status" => "success",
+                    "message" => $message,
+                    "count" => count($purchases),
+                    "data" => $purchases
+                ];
+            } else {
+                http_response_code(200);
+
+                return [
+                    "status" => "success",
+                    "message" => "belum ada data transaksi",
+                    "data" => []
+                ];
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+
+            return [
+                "status" => "error",
+                "message" => "Gagal mengambil data transaksi: " . $e->getMessage()
+            ];
+        }
+    }
 }

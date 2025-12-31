@@ -42,7 +42,7 @@ class PurchaseModel {
                 $q_new = $item['quantity'];
                 $c_new = $item['cost_price'];
 
-                // --- LOGIKA MOVING AVERAGE ---
+                // --- MOVING AVERAGE LOGIC ---
                 
                 // A. Ambil stok dan harga modal saat ini
                 $stmtGetProd->bind_param("i", $product_id);
@@ -80,5 +80,41 @@ class PurchaseModel {
             $this->conn->rollback();
             throw $e;
         }
+    }
+
+    public function getAllPurchases() {
+        $sql = "SELECT id, purchase_date, supplier_name, total_cost FROM purchases ORDER BY purchase_date DESC";
+
+        $result = $this->conn->query($sql);
+
+        $purchases = [];
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $purchases[] = $row;
+            }
+        }
+
+        return $purchases;
+    }
+
+    public function getPurchasesByDateRange($startDate = null, $endDate = null) {
+        $sql = "SELECT id, purchase_date, supplier_name, total_cost FROM purchases WHERE DATE(purchase_date) BETWEEN ? AND ? ORDER BY purchase_date DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $purchases = [];
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $purchases[] = $row;
+            }
+        }
+
+        $stmt->close();
+        return $purchases;
     }
 }
