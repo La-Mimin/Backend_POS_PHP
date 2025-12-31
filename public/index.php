@@ -44,9 +44,15 @@ $protected_routes = [
 
 // 3. Parsing URI untuk mendapatkan $route
 $uri_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$clean_path = trim($uri_path, '/');
+if (strpos($uri_path, 'index.php') !== false) {
+    $parts = explode('index.php/', $uri_path);
+    $clean_path = end($parts); // Ambil bagian setelah index.php/
+} else {
+    $clean_path = trim($uri_path, '/');
+}
+
 $uri_segments = array_values(array_filter(explode('/', $clean_path)));
-$route = isset($uri_segments[0]) && $uri_segments[0] !== '' ? strtolower($uri_segments[0]) : 'products';
+$route = isset($uri_segments[0]) ? strtolower($uri_segments[0]) : '';
 
 // 4. --- MIDDLEWARE AUTHENTICATION JWT ---
 if (isset($protected_routes[$route][$method])) {
