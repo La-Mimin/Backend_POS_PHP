@@ -1,13 +1,16 @@
 <?php 
 
 require_once __DIR__ . '/../models/UserModel.php';
+require_once __DIR__ . '/../models/Logger.php';
 
 class UserController {
     private $userModel;
+    private $logger;
     private $secretKey = 's9F2kL!aP#xR7mQeV@4ZC1D8Wn0B$yT';    
 
     public function __construct($conn) {
         $this->userModel = new UserModel($conn);
+        $this->logger = new Logger($conn);
 
     }
 
@@ -84,6 +87,8 @@ class UserController {
                     "message" => "username dan password salah!"
                 ];
             }
+
+            $this->logger->log("USER_LOGIN", "User " . $user['username'] . " berhasil login.");
         } catch (Exception $e) {
             http_response_code(500);
             return ["status" => "error", "message" => "Gagal proses login: " . $e->getMessage()];

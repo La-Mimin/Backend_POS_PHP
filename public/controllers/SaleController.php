@@ -1,11 +1,14 @@
 <?php
 require_once __DIR__ . '/../models/SaleModel.php';
+require_once __DIR__ . '/../models/Logger.php';
 
 class SaleController {
     private $saleModel;
+    private $logger;
 
     public function __construct($conn) {
         $this->saleModel = new SaleModel($conn);
+        $this->logger = new Logger($conn);
     }
 
     // Menangani POST /sales
@@ -132,7 +135,9 @@ class SaleController {
 
         try {
             $this->saleModel->voidSale($sale_id);
-        return [
+            $this->logger->log("VOID_SALE", "Transaksi ID $sale_id telah dibatalkan/dihapus oleh Admin.");
+
+            return [
                 "status" => "success",
                 "message" => "Transaksi ID $sale_id berhasil dibatalkan dan stok telah dikembalikan."
             ];
