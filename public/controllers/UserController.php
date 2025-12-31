@@ -72,7 +72,15 @@ class UserController {
             $user = $this->userModel->findUserByCredentials($data['username'], $data['password']);
 
             if ($user) {
+                $GLOBALS['user_data'] = [
+                    'id' => $user['id'],
+                    'username' => $user['username'],
+                    'role' => $user['role']
+                ];
+                
                 $token = $this->generateJWT($user);
+
+                $this->logger->log("USER_LOGIN", "User " . $user['username'] . " berhasil login.");
 
                 http_response_code(200);
                 return [
@@ -81,14 +89,14 @@ class UserController {
                     "token" => $token
                 ];
             } else {
+                $this->logger->log("LOGIN_FAILED", "Percobaan login gagal untuk username: " . ($data['username'] ?? 'unknown'));
+                
                 http_response_code(401);
                 return [
                     "status" => "error",
                     "message" => "username dan password salah!"
                 ];
             }
-
-            $this->logger->log("USER_LOGIN", "User " . $user['username'] . " berhasil login.");
         } catch (Exception $e) {
             http_response_code(500);
             return ["status" => "error", "message" => "Gagal proses login: " . $e->getMessage()];

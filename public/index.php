@@ -6,6 +6,7 @@ require_once 'controllers/ProductController.php';
 require_once 'controllers/SaleController.php';
 require_once 'controllers/UserController.php';
 require_once 'controllers/PurchaseController.php';
+require_once 'controllers/LogController.php';
 
 // 1. Definisikan Method
 $method = strtoupper(trim($_SERVER['REQUEST_METHOD']));
@@ -27,6 +28,9 @@ $protected_routes = [
         'POST' => ['admin'],
         'GET' => ['admin']
     ],
+    'logs' => [
+        'GET' => ['admin']
+    ]
 ];
 
 // 3. Parsing URI untuk mendapatkan $route
@@ -136,6 +140,12 @@ if ($route === 'products') {
     } else {
         http_response_code(405);
         $response = ["status" => "error", "message" => "Metode tidak diizinkan."];
+    }
+} elseif($route === 'logs') {
+    $controller = new LogController($conn);
+
+    if ($method === 'GET') {
+        $response = $controller->handleGetRequest();
     }
 } else {
     http_response_code(404);
